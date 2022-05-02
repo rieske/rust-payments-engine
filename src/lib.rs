@@ -147,18 +147,18 @@ pub fn process_transactions_csv(
             .process(transaction);
     }
 
-    write(accounts, output)
+    write_account_states_as_csv(accounts, output)
 }
 
-fn write(
+fn write_account_states_as_csv(
     accounts: BTreeMap<ClientId, Account>,
     output: &mut impl Write,
 ) -> Result<(), Box<dyn Error>> {
     let mut wtr = csv::Writer::from_writer(output);
 
-    for acc in accounts.values() {
-        if !acc.transactions.is_empty() {
-            wtr.serialize(acc)?;
+    for account in accounts.values() {
+        if !account.transactions.is_empty() {
+            wtr.serialize(account)?;
         }
     }
 
