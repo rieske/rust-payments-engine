@@ -12,21 +12,11 @@ type TransactionId = u32;
 type Amount = Decimal;
 
 #[derive(Deserialize)]
-#[serde(rename_all = "lowercase")]
-enum TransactionType {
-    Deposit,
-    Withdrawal,
-    Dispute,
-    Resolve,
-    Chargeback,
-}
-
-#[derive(Deserialize)]
-struct Transaction {
+struct Transaction<'a> {
     #[serde(rename = "tx")]
     id: TransactionId,
     #[serde(rename = "type")]
-    tx_type: TransactionType,
+    tx_type: &'a str,
     #[serde(rename = "client")]
     client_id: ClientId,
     #[serde(rename = "amount")]
@@ -65,13 +55,14 @@ impl Account {
         //  on the other hand, with traits, I'd be creating more objects rather than just one
         //  transaction. How much of an overhead is this? Need to benchmark.
         match transaction.tx_type {
-            TransactionType::Deposit => self.deposit(transaction.id, transaction.amount.unwrap()),
-            TransactionType::Withdrawal => {
+            "deposit" => self.deposit(transaction.id, transaction.amount.unwrap()),
+            "withdrawal" => {
                 self.withdraw(transaction.id, transaction.amount.unwrap())
             }
-            TransactionType::Dispute => self.dispute(transaction.id),
-            TransactionType::Resolve => self.resolve(transaction.id),
-            TransactionType::Chargeback => self.chargeback(transaction.id),
+            "dispute" => self.dispute(transaction.id),
+            "resolve" => self.resolve(transaction.id),
+            "chargeback" => self.chargeback(transaction.id),
+            _ => {}
         }
     }
 
@@ -136,9 +127,14 @@ pub fn process_transactions_csv(
         .flexible(true)
         .from_reader(transactions_csv);
 
+    let headers = rdr.byte_headers()?.clone();
+    let mut raw_record = csv::ByteRecord::new();
+
+    // TODO: has to be some idiomatic way to structure this more nicely and separate CSV parsing
+    // from business logic
     let mut accounts = BTreeMap::new();
-    for result in rdr.deserialize() {
-        let transaction: Transaction = result?;
+    while rdr.read_byte_record(&mut raw_record)? {
+        let transaction: Transaction = raw_record.deserialize(Some(&headers))?;
 
         accounts
             .entry(transaction.client_id)
