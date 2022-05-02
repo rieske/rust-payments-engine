@@ -38,43 +38,15 @@ struct Account {
 }
 
 impl Account {
-    fn create(client_id: ClientId) -> Account {
-        Account {
-            client_id: client_id,
-            available: Decimal::new(0, 4),
-            held: Decimal::new(0, 4),
-            total: Decimal::new(0, 4),
-            locked: false,
-            transactions: BTreeMap::new(),
-            disputes: BTreeMap::new(),
-        }
-    }
-
-    fn process(&mut self, transaction: Transaction) {
-        // TODO: I bet there is a more Rusty way to approach this. Traits something?
-        //  on the other hand, with traits, I'd be creating more objects rather than just one
-        //  transaction. How much of an overhead is this? Need to benchmark.
-        match transaction.tx_type {
-            "deposit" => self.deposit(transaction.id, transaction.amount.unwrap()),
-            "withdrawal" => {
-                self.withdraw(transaction.id, transaction.amount.unwrap())
-            }
-            "dispute" => self.dispute(transaction.id),
-            "resolve" => self.resolve(transaction.id),
-            "chargeback" => self.chargeback(transaction.id),
-            _ => {}
-        }
-    }
-
     fn deposit(&mut self, id: TransactionId, amount: Amount) {
-        // TODO: output to stderr if deposit of negative amount is encountered?
+        // TODO: log to stderr if deposit of negative amount is encountered?
         if amount.is_sign_positive() {
             self.add(id, amount);
         }
     }
 
     fn withdraw(&mut self, id: TransactionId, amount: Amount) {
-        // TODO: output to stderr if withdrawal of negative amount is encountered?
+        // TODO: log to stderr if withdrawal of negative amount is encountered?
         if amount.is_sign_positive() {
             self.add(id, -amount);
         }
@@ -86,7 +58,7 @@ impl Account {
             self.held += disputed_amount;
             self.disputes.insert(id, *disputed_amount);
         }
-        // TODO: should we output something to stderr if there was nothing to dispute?
+        // TODO: should we log something to stderr if there was nothing to dispute?
     }
 
     fn resolve(&mut self, id: TransactionId) {
@@ -94,7 +66,7 @@ impl Account {
             self.available += disputed_amount;
             self.held -= disputed_amount;
         }
-        // TODO: should we output something to stderr if there was no dispute?
+        // TODO: should we log something to stderr if there was no dispute?
     }
 
     fn chargeback(&mut self, id: TransactionId) {
@@ -103,7 +75,7 @@ impl Account {
             self.total -= disputed_amount;
             self.locked = true;
         }
-        // TODO: should we output something to stderr if there was no dispute?
+        // TODO: should we log something to stderr if there was no dispute?
     }
 
     fn add(&mut self, id: TransactionId, amount: Amount) {
@@ -114,7 +86,39 @@ impl Account {
             self.total = new_total;
             self.transactions.insert(id, amount);
         }
-        // TODO: should we output something to stderr when a transaction can not be handled?
+        // TODO: should we log something to stderr when a transaction can not be handled?
+    }
+}
+
+struct PaymentsEngine {
+    accounts: BTreeMap<ClientId, Account>,
+}
+
+impl PaymentsEngine {
+    fn process_transaction(&mut self, transaction: Transaction) {
+        let account = self
+            .accounts
+            .entry(transaction.client_id)
+            .or_insert_with(|| Account {
+                client_id: transaction.client_id,
+                available: Decimal::new(0, 4),
+                held: Decimal::new(0, 4),
+                total: Decimal::new(0, 4),
+                locked: false,
+                transactions: BTreeMap::new(),
+                disputes: BTreeMap::new(),
+            });
+
+        match transaction.tx_type {
+            "deposit" => account.deposit(transaction.id, transaction.amount.unwrap()),
+            "withdrawal" => account.withdraw(transaction.id, transaction.amount.unwrap()),
+            "dispute" => account.dispute(transaction.id),
+            "resolve" => account.resolve(transaction.id),
+            "chargeback" => account.chargeback(transaction.id),
+            _ => {
+                // TODO: log something to stderr?
+            }
+        }
     }
 }
 
@@ -130,19 +134,16 @@ pub fn process_transactions_csv(
     let headers = rdr.byte_headers()?.clone();
     let mut raw_record = csv::ByteRecord::new();
 
-    // TODO: has to be some idiomatic way to structure this more nicely and separate CSV parsing
-    // from business logic
-    let mut accounts = BTreeMap::new();
+    let mut payments_engine = PaymentsEngine {
+        accounts: BTreeMap::new(),
+    };
     while rdr.read_byte_record(&mut raw_record)? {
         let transaction: Transaction = raw_record.deserialize(Some(&headers))?;
 
-        accounts
-            .entry(transaction.client_id)
-            .or_insert_with(|| Account::create(transaction.client_id))
-            .process(transaction);
+        payments_engine.process_transaction(transaction);
     }
 
-    write_account_states_as_csv(accounts, output)
+    write_account_states_as_csv(payments_engine.accounts, output)
 }
 
 fn write_account_states_as_csv(
