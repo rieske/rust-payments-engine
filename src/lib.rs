@@ -93,10 +93,9 @@ impl Account {
         if let Some(disputed_amount) = self.transactions.get(&id) {
             self.available -= disputed_amount;
             self.held += disputed_amount;
-            // TODO: copy the amounts here? Or keep disputed tx ids in a set? Or store mutable
-            // objects with (amount, bool) in transactions?
             self.disputes.insert(id, *disputed_amount);
         }
+        // TODO: should we output something to stderr if there was nothing to dispute?
     }
 
     fn resolve(&mut self, id: TransactionId) {
