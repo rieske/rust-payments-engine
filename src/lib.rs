@@ -12,25 +12,41 @@ type TransactionId = u32;
 type Amount = Decimal;
 
 #[derive(Deserialize)]
-#[serde(rename_all = "lowercase")]
-enum TransactionType {
-    Deposit,
-    Withdrawal,
-    Dispute,
-    Resolve,
-    Chargeback,
+struct ClientTransaction {
+    #[serde(rename = "client")]
+    client_id: ClientId,
+    #[serde(flatten)]
+    transaction: Transaction,
 }
 
 #[derive(Deserialize)]
-struct Transaction {
-    #[serde(rename = "tx")]
-    id: TransactionId,
-    #[serde(rename = "type")]
-    tx_type: TransactionType,
-    #[serde(rename = "client")]
-    client_id: ClientId,
-    #[serde(rename = "amount")]
-    amount: Option<Amount>,
+#[serde(rename_all= "lowercase")]
+#[serde(tag = "type")]
+enum Transaction {
+    Deposit {
+        #[serde(rename = "tx")]
+        id: TransactionId,
+        #[serde(rename = "amount")]
+        amount: Amount,
+    },
+    Withdrawal {
+        #[serde(rename = "tx")]
+        id: TransactionId,
+        #[serde(rename = "amount")]
+        amount: Amount,
+    },
+    Dispute {
+        #[serde(rename = "tx")]
+        id: TransactionId,
+    },
+    Resolve {
+        #[serde(rename = "tx")]
+        id: TransactionId,
+    },
+    Chargeback {
+        #[serde(rename = "tx")]
+        id: TransactionId,
+    },
 }
 
 #[derive(Serialize)]
@@ -64,14 +80,12 @@ impl Account {
         // TODO: I bet there is a more Rusty way to approach this. Traits something?
         //  on the other hand, with traits, I'd be creating more objects rather than just one
         //  transaction. How much of an overhead is this? Need to benchmark.
-        match transaction.tx_type {
-            TransactionType::Deposit => self.deposit(transaction.id, transaction.amount.unwrap()),
-            TransactionType::Withdrawal => {
-                self.withdraw(transaction.id, transaction.amount.unwrap())
-            }
-            TransactionType::Dispute => self.dispute(transaction.id),
-            TransactionType::Resolve => self.resolve(transaction.id),
-            TransactionType::Chargeback => self.chargeback(transaction.id),
+        match transaction {
+            Transaction::Deposit { id, amount } => self.deposit(id, amount),
+            Transaction::Withdrawal { id, amount } => self.withdraw(id, amount),
+            Transaction::Dispute { id } => self.dispute(id),
+            Transaction::Resolve { id } => self.resolve(id),
+            Transaction::Chargeback { id } => self.chargeback(id),
         }
     }
 
@@ -138,12 +152,12 @@ pub fn process_transactions_csv(
 
     let mut accounts = BTreeMap::new();
     for result in rdr.deserialize() {
-        let transaction: Transaction = result?;
+        let transaction: ClientTransaction = result?;
 
         accounts
             .entry(transaction.client_id)
             .or_insert_with(|| Account::create(transaction.client_id))
-            .process(transaction);
+            .process(transaction.transaction);
     }
 
     write_account_states_as_csv(accounts, output)
