@@ -17,7 +17,7 @@ enum TransactionType {
     Withdrawal,
     Dispute,
     Resolve,
-    Chargeback
+    Chargeback,
 }
 
 #[derive(Deserialize)]
@@ -119,8 +119,12 @@ impl PaymentsEngine {
             });
 
         match transaction.tx_type {
-            TransactionType::Deposit => account.deposit(transaction.id, transaction.amount.unwrap()),
-            TransactionType::Withdrawal => account.withdraw(transaction.id, transaction.amount.unwrap()),
+            TransactionType::Deposit => {
+                account.deposit(transaction.id, transaction.amount.unwrap())
+            }
+            TransactionType::Withdrawal => {
+                account.withdraw(transaction.id, transaction.amount.unwrap())
+            }
             TransactionType::Dispute => account.dispute(transaction.id),
             TransactionType::Resolve => account.resolve(transaction.id),
             TransactionType::Chargeback => account.chargeback(transaction.id),
