@@ -5,7 +5,6 @@ use std::collections::BTreeMap;
 use std::error::Error;
 use std::io::Read;
 use std::io::Write;
-use std::str;
 
 type ClientId = u16;
 type TransactionId = u32;
