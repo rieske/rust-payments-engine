@@ -11,8 +11,8 @@ serde = { version = "1", features = ["derive"] }
 rust_decimal = "1.23"
 
 [profile.release]
-# Both of the below flags chop off ~20% of runtime with 10m deposits-withdrawals sample
+# lto only below seems to reduce the execution of 10m deposits-withdrawals sample from ~4.5s to ~3.9s
 lto = true
-codegen-units = 1
-panic = "abort"
+#codegen-units = 1
+#panic = "abort"
 

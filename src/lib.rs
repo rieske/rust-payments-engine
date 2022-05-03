@@ -12,11 +12,21 @@ type TransactionId = u32;
 type Amount = Decimal;
 
 #[derive(Deserialize)]
-struct Transaction<'a> {
+#[serde(rename_all = "lowercase")]
+enum TransactionType {
+    Deposit,
+    Withdrawal,
+    Dispute,
+    Resolve,
+    Chargeback
+}
+
+#[derive(Deserialize)]
+struct Transaction {
     #[serde(rename = "tx")]
     id: TransactionId,
     #[serde(rename = "type")]
-    tx_type: &'a str,
+    tx_type: TransactionType,
     #[serde(rename = "client")]
     client_id: ClientId,
     #[serde(rename = "amount")]
@@ -110,14 +120,11 @@ impl PaymentsEngine {
             });
 
         match transaction.tx_type {
-            "deposit" => account.deposit(transaction.id, transaction.amount.unwrap()),
-            "withdrawal" => account.withdraw(transaction.id, transaction.amount.unwrap()),
-            "dispute" => account.dispute(transaction.id),
-            "resolve" => account.resolve(transaction.id),
-            "chargeback" => account.chargeback(transaction.id),
-            _ => {
-                // TODO: log something to stderr?
-            }
+            TransactionType::Deposit => account.deposit(transaction.id, transaction.amount.unwrap()),
+            TransactionType::Withdrawal => account.withdraw(transaction.id, transaction.amount.unwrap()),
+            TransactionType::Dispute => account.dispute(transaction.id),
+            TransactionType::Resolve => account.resolve(transaction.id),
+            TransactionType::Chargeback => account.chargeback(transaction.id),
         }
     }
 }
