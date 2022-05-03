@@ -105,6 +105,19 @@ mod tests {
     }
 
     #[test]
+    fn supports_four_decimal_places() {
+        let output = process_transactions(
+            "type, client, tx, amount
+            deposit, 1, 1, 10.0
+            withdrawal, 1, 2, 0.0001",
+        );
+
+        assert_eq!(output.lines().count(), 2);
+        assert!(output.contains("client,available,held,total,locked\n"));
+        assert!(output.contains("1,9.9999,0.0000,9.9999,false\n"));
+    }
+
+    #[test]
     fn ignores_withdrawal_when_not_enough_funds_available() {
         let output = process_transactions(
             "type, client, tx, amount
