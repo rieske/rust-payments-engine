@@ -47,6 +47,18 @@ struct Account {
 }
 
 impl Account {
+    fn new(client_id: ClientId) -> Self {
+        Account {
+            client_id: client_id,
+            available: Decimal::new(0, 4),
+            held: Decimal::new(0, 4),
+            total: Decimal::new(0, 4),
+            locked: false,
+            transactions: HashMap::new(),
+            disputes: HashMap::new(),
+        }
+    }
+
     fn deposit(&mut self, id: TransactionId, amount: Amount) {
         // TODO: log to stderr if deposit of negative amount is encountered?
         if amount.is_sign_positive() {
@@ -108,15 +120,7 @@ impl PaymentsEngine {
         let account = self
             .accounts
             .entry(transaction.client_id)
-            .or_insert_with(|| Account {
-                client_id: transaction.client_id,
-                available: Decimal::new(0, 4),
-                held: Decimal::new(0, 4),
-                total: Decimal::new(0, 4),
-                locked: false,
-                transactions: HashMap::new(),
-                disputes: HashMap::new(),
-            });
+            .or_insert_with(|| Account::new(transaction.client_id));
 
         match transaction.tx_type {
             TransactionType::Deposit => {
