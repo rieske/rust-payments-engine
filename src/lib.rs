@@ -1,7 +1,7 @@
 use rust_decimal::Decimal;
 use serde::Deserialize;
 use serde::Serialize;
-use std::collections::BTreeMap;
+use std::collections::HashMap;
 use std::error::Error;
 use std::io::Read;
 use std::io::Write;
@@ -41,9 +41,9 @@ struct Account {
     total: Amount,
     locked: bool,
     #[serde(skip_serializing)]
-    transactions: BTreeMap<TransactionId, Amount>,
+    transactions: HashMap<TransactionId, Amount>,
     #[serde(skip_serializing)]
-    disputes: BTreeMap<TransactionId, Amount>,
+    disputes: HashMap<TransactionId, Amount>,
 }
 
 impl Account {
@@ -100,7 +100,7 @@ impl Account {
 }
 
 struct PaymentsEngine {
-    accounts: BTreeMap<ClientId, Account>,
+    accounts: HashMap<ClientId, Account>,
 }
 
 impl PaymentsEngine {
@@ -114,8 +114,8 @@ impl PaymentsEngine {
                 held: Decimal::new(0, 4),
                 total: Decimal::new(0, 4),
                 locked: false,
-                transactions: BTreeMap::new(),
-                disputes: BTreeMap::new(),
+                transactions: HashMap::new(),
+                disputes: HashMap::new(),
             });
 
         match transaction.tx_type {
@@ -145,7 +145,7 @@ pub fn process_transactions_csv(
     let mut raw_record = csv::ByteRecord::new();
 
     let mut payments_engine = PaymentsEngine {
-        accounts: BTreeMap::new(),
+        accounts: HashMap::new(),
     };
     while rdr.read_byte_record(&mut raw_record)? {
         let transaction: Transaction = raw_record.deserialize(Some(&headers))?;
@@ -157,7 +157,7 @@ pub fn process_transactions_csv(
 }
 
 fn write_account_states_as_csv(
-    accounts: BTreeMap<ClientId, Account>,
+    accounts: HashMap<ClientId, Account>,
     output: &mut impl Write,
 ) -> Result<(), Box<dyn Error>> {
     let mut wtr = csv::Writer::from_writer(output);
