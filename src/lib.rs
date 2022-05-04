@@ -116,6 +116,12 @@ struct PaymentsEngine {
 }
 
 impl PaymentsEngine {
+    fn new() -> Self {
+        PaymentsEngine {
+            accounts: HashMap::new(),
+        }
+    }
+
     fn process_transaction(&mut self, transaction: Transaction) {
         let account = self
             .accounts
@@ -154,9 +160,7 @@ pub fn process_transactions_csv(
     let headers = rdr.byte_headers()?.clone();
     let mut raw_record = csv::ByteRecord::new();
 
-    let mut payments_engine = PaymentsEngine {
-        accounts: HashMap::new(),
-    };
+    let mut payments_engine = PaymentsEngine::new();
     while rdr.read_byte_record(&mut raw_record)? {
         let transaction: Transaction = raw_record.deserialize(Some(&headers))?;
 
