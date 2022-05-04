@@ -133,13 +133,13 @@ impl PaymentsEngine {
                 if let Some(amount) = transaction.amount {
                     account.deposit(transaction.id, amount)
                 }
-                // TODO: else panic with a pointer to this bad data entry?
+                // TODO: else panic with a pointer to this bad data entry? Or stderr and skip?
             }
             TransactionType::Withdrawal => {
                 if let Some(amount) = transaction.amount {
                     account.withdraw(transaction.id, amount)
                 }
-                // TODO: else panic with a pointer to this bad data entry?
+                // TODO: else panic with a pointer to this bad data entry? Or stderr and skip?
             }
             TransactionType::Dispute => account.dispute(transaction.id),
             TransactionType::Resolve => account.resolve(transaction.id),
@@ -148,9 +148,15 @@ impl PaymentsEngine {
     }
 }
 
-pub fn process_transactions_csv(
+pub fn run(transactions_csv: impl Read, output: &mut impl Write) -> Result<(), Box<dyn Error>> {
+    let mut payments_engine = PaymentsEngine::new();
+    process_csv(transactions_csv, &mut payments_engine)?;
+    write_account_states_to_csv(payments_engine.accounts, output)
+}
+
+fn process_csv(
     transactions_csv: impl Read,
-    output: &mut impl Write,
+    payments_engine: &mut PaymentsEngine,
 ) -> Result<(), Box<dyn Error>> {
     let mut rdr = csv::ReaderBuilder::new()
         .trim(csv::Trim::All)
@@ -160,17 +166,15 @@ pub fn process_transactions_csv(
     let headers = rdr.byte_headers()?.clone();
     let mut raw_record = csv::ByteRecord::new();
 
-    let mut payments_engine = PaymentsEngine::new();
     while rdr.read_byte_record(&mut raw_record)? {
         let transaction: Transaction = raw_record.deserialize(Some(&headers))?;
-
         payments_engine.process_transaction(transaction);
     }
 
-    write_account_states_as_csv(payments_engine.accounts, output)
+    Ok(())
 }
 
-fn write_account_states_as_csv(
+fn write_account_states_to_csv(
     accounts: HashMap<ClientId, Account>,
     output: &mut impl Write,
 ) -> Result<(), Box<dyn Error>> {

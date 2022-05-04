@@ -11,7 +11,7 @@ fn main() {
         .expect("Could not get CSV path")
         .expect("Could not open CSV file");
 
-    if let Err(e) = payments_engine::process_transactions_csv(transactions_csv, &mut io::stdout()) {
+    if let Err(e) = payments_engine::run(transactions_csv, &mut io::stdout()) {
         eprintln!("error: {}", e);
         process::exit(1);
     }

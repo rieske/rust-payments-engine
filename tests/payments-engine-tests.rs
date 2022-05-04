@@ -4,7 +4,7 @@ mod tests {
 
     fn process_transactions(input: &str) -> String {
         let mut output = Vec::new();
-        payments_engine::process_transactions_csv(input.as_bytes(), &mut output).unwrap();
+        payments_engine::run(input.as_bytes(), &mut output).unwrap();
         str::from_utf8(&output).unwrap().to_string()
     }
 
