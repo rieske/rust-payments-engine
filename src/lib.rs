@@ -120,10 +120,16 @@ impl PaymentsEngine {
 
         match transaction.tx_type {
             TransactionType::Deposit => {
-                account.deposit(transaction.id, transaction.amount.unwrap())
+                if let Some(amount) = transaction.amount {
+                    account.deposit(transaction.id, amount)
+                }
+                // TODO: else panic with a pointer to this bad data entry?
             }
             TransactionType::Withdrawal => {
-                account.withdraw(transaction.id, transaction.amount.unwrap())
+                if let Some(amount) = transaction.amount {
+                    account.withdraw(transaction.id, amount)
+                }
+                // TODO: else panic with a pointer to this bad data entry?
             }
             TransactionType::Dispute => account.dispute(transaction.id),
             TransactionType::Resolve => account.resolve(transaction.id),
