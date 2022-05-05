@@ -193,7 +193,7 @@ mod tests {
 
         assert_eq!(output.lines().count(), 2);
         assert!(output.contains("client,available,held,total,locked\n"));
-        assert!(output.contains("1,10,-5,5,false\n"));
+        assert!(output.contains("1,5,-5,5,false\n"));
     }
 
     #[test]
@@ -208,7 +208,7 @@ mod tests {
 
         assert_eq!(output.lines().count(), 2);
         assert!(output.contains("client,available,held,total,locked\n"));
-        assert!(output.contains("1,10,-5,5,false\n"));
+        assert!(output.contains("1,5,-5,5,false\n"));
     }
 
     #[test]
@@ -233,6 +233,21 @@ mod tests {
             deposit, 1, 1, 10.0
             withdrawal, 1, 2, 5.0
             dispute, 1, 1,",
+        );
+
+        assert_eq!(output.lines().count(), 2);
+        assert!(output.contains("client,available,held,total,locked\n"));
+        assert!(output.contains("1,-5,10,5,false\n"));
+    }
+
+    #[test]
+    fn can_not_withdraw_after_disputed_deposit() {
+        let output = process_transactions(
+            "type, client, tx, amount
+            deposit, 1, 1, 10.0
+            withdrawal, 1, 2, 5.0
+            dispute, 1, 1,
+            withdrawal, 1, 3, 1.0",
         );
 
         assert_eq!(output.lines().count(), 2);

@@ -75,36 +75,49 @@ impl Account {
 
     fn dispute(&mut self, id: TransactionId) {
         if let Some(disputed_amount) = self.transactions.get(&id) {
-            self.available -= disputed_amount;
+            // Only decrease the available amount for disputed deposits.
+            if disputed_amount.is_sign_positive() {
+                self.available -= disputed_amount;
+            }
             self.held += disputed_amount;
             self.disputes.insert(id, *disputed_amount);
         }
-        // TODO: should we log something to stderr if there was nothing to dispute?
+        // if the transaction to dispute is not found, ignore and assume an error on the parner's side
     }
 
     fn resolve(&mut self, id: TransactionId) {
         if let Some(disputed_amount) = self.disputes.remove(&id) {
-            self.available += disputed_amount;
+            // Release available funds only for disputed deposits.
+            // Disputed withdrawals (negative disputed amount) do not increase the available
+            // amount.
+            if disputed_amount.is_sign_positive() {
+                self.available += disputed_amount;
+            }
             self.held -= disputed_amount;
         }
-        // TODO: should we log something to stderr if there was no dispute?
+        // if the dispute is not found, ignore and assume an error on the parner's side
     }
 
     fn chargeback(&mut self, id: TransactionId) {
         if let Some(disputed_amount) = self.disputes.remove(&id) {
             self.held -= disputed_amount;
             self.total -= disputed_amount;
+            // If the disputed amount is negative, then a withdrawal was disputed.
+            // We should return the disputed amount on chargeback in this case.
+            if disputed_amount.is_sign_negative() {
+                self.available -= disputed_amount;
+            }
             self.locked = true;
         }
-        // TODO: should we log something to stderr if there was no dispute?
+        // if the dispute is not found, ignore and assume an error on the parner's side
     }
 
     fn add(&mut self, id: TransactionId, amount: Amount) {
-        let new_total = self.total + amount;
-        // Only adjust balance if the new total amount is not negative. Ignore the transaction otherwise.
-        if !self.locked && !new_total.is_sign_negative() {
-            self.available += amount;
-            self.total = new_total;
+        let new_available = self.available + amount;
+        // Only adjust balance if the account is not locked and the new available amount is not negative. Ignore the transaction otherwise.
+        if !self.locked && !new_available.is_sign_negative() {
+            self.available = new_available;
+            self.total += amount;
             self.transactions.insert(id, amount);
         }
         // TODO: should we log something to stderr when a transaction can not be handled?
